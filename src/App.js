@@ -56,12 +56,33 @@ const average = (arr) =>
 export default function App() {
   const [movies, setMovies] = useState(tempMovieData);
   const [watched, setWatched] = useState(tempWatchedData);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(""); // definiramo state za error (prazan string) - ovjde ćemo kasnije dodati err.message
+  const query = "dfgsdfgsdfghsdfh";
 
   useEffect(function () {
-    fetch(`http://www.omdbapi.com/?i=tt3896198&apikey=8592f9a5&s='interstellar'
-    `)
-      .then((res) => res.json())
-      .then((data) => setMovies(data.Search));
+    async function fetchMovies() {
+      try {
+        // kad lovimo greške koristimo try / catch sintaksu
+        setIsLoading(true);
+        const res =
+          await fetch(`http://www.omdbapi.com/?i=tt3896198&apikey=8592f9a5&s=${query}
+      `);
+
+        if (!res.ok)
+          // ako nema response koda OK dodaj novu grešku - ispod je err.message
+          throw new Error("Something went wrong with fetching movies");
+        const data = await res.json();
+        if (data.Response === "False") throw new Error("Movie not found"); // ako imamo response False to znači da nije pronašao film (ako utipkamo nešto random tipa 'sdfhkasdgkhčl')
+        setMovies(data.Search);
+      } catch (err) {
+        console.error(err.message);
+        setError(err.message); // kod pojavljivanja greške promijeni state na setError
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchMovies();
   }, []);
 
   return (
@@ -74,7 +95,10 @@ export default function App() {
       <Main>
         {/* <Box element={<MovieList movies={movies} />} /> */}
         <Box>
-          <MovieList movies={movies} />
+          {/* {isLoading ? <Loader /> : <MovieList movies={movies} />} */}
+          {isLoading && <Loader />}
+          {!isLoading && !error && <MovieList movies={movies} />}
+          {error && <ErrorMessage message={error} />}
         </Box>
         <Box>
           <WatchedSummary watched={watched} />
@@ -128,6 +152,14 @@ function Main({ children }) {
 }
 
 /***** LIST OF MOVIES BOX *****/
+
+function Loader() {
+  return <p className="loader">Loading...</p>;
+}
+
+function ErrorMessage({ message }) {
+  return <p className="error">{message}</p>;
+}
 
 function Box({ children }) {
   const [isOpen, setIsOpen] = useState(true);
